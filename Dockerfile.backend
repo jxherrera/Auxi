@@ -1,0 +1,32 @@
+# ==========================================
+# Backend Dockerfile - AgroCacao Pro
+# Node.js + SQLite3 Persistent Database
+# ==========================================
+
+FROM node:20-alpine
+
+# Install build dependencies for native sqlite3 module
+RUN apk add --no-cache python3 make g++ sqlite
+
+WORKDIR /app
+
+# Copy server package files
+COPY server/package*.json ./
+
+# Install dependencies
+RUN npm install --omit=dev
+
+# Copy server application code
+COPY server/ ./
+
+# Create persistent data directory for SQLite database
+RUN mkdir -p /app/data
+
+# Default environment variables
+ENV PORT=3001
+ENV NODE_ENV=production
+
+EXPOSE 3001
+
+# Run API server
+CMD ["node", "index.js"]

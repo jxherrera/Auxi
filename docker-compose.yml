@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # Backend API Server with SQLite
+  backend:
+    container_name: agrocacao_backend_dev
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "${BACKEND_PORT:-3001}:3001"
+    environment:
+      - PORT=3001
+      - NODE_ENV=development
+    volumes:
+      # Persistent SQLite volume ensures data is never lost across container restarts
+      - agrocacao_dev_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # Frontend Web UI with Nginx Reverse Proxy
+  frontend:
+    container_name: agrocacao_frontend_dev
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  agrocacao_dev_data:
+    name: agrocacao_dev_sqlite_data
+    driver: local

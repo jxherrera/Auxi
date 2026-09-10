@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # Backend Production Service
+  backend:
+    container_name: agrocacao_backend_prod
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+    volumes:
+      # Persistent Volume for Production SQLite Database
+      - agrocacao_prod_data:/app/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Frontend & Nginx Production Service
+  frontend:
+    container_name: agrocacao_frontend_prod
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: always
+
+volumes:
+  agrocacao_prod_data:
+    name: agrocacao_prod_sqlite_data
+    driver: local
