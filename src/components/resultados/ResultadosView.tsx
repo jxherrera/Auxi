@@ -74,52 +74,51 @@ export const ResultadosView: React.FC = () => {
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-card">
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-2xl bg-amber-100 text-amber-800">
-            <Sparkles className="w-7 h-7" />
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3.5 sm:gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-card">
+        <div className="flex items-center gap-3 sm:gap-3.5">
+          <div className="p-2 sm:p-2.5 rounded-xl bg-amber-100 text-amber-800 shrink-0">
+            <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Resultados Agrícolas, Cosechas e Insumos</h2>
-            <p className="text-xs text-slate-500">
-              Control de producción recolectada, trazabilidad de rendimientos y requerimiento de materiales
-            </p>
+            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight leading-snug">
+              Resultados Agrícolas, Cosechas e Insumos
+            </h2>
           </div>
         </div>
 
         {/* Tabs selector */}
-        <div className="flex items-center bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+        <div className="w-full lg:w-auto flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto no-scrollbar gap-1">
           <button
             onClick={() => setActiveTab('cosechas')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`flex-1 sm:flex-initial shrink-0 px-3 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'cosechas'
                 ? 'bg-white text-cacao-950 shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Grape className="w-3.5 h-3.5 text-amber-600" />
+            <Grape className="w-3.5 h-3.5 shrink-0 text-amber-600" />
             <span>Cosechas ({cosechas.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('materiales')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`flex-1 sm:flex-initial shrink-0 px-3 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'materiales'
                 ? 'bg-white text-cacao-950 shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Package className="w-3.5 h-3.5 text-cacao-700" />
+            <Package className="w-3.5 h-3.5 shrink-0 text-cacao-700" />
             <span>Insumos & Materiales ({todosMaterialesRequeridos.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('labores')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`flex-1 sm:flex-initial shrink-0 px-3 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'labores'
                 ? 'bg-white text-cacao-950 shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
             <span>Labores de Campo ({laboresConResultado.length})</span>
           </button>
         </div>
