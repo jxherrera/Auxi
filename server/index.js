@@ -6,6 +6,7 @@ import {
   runQuery,
   getQuery,
   allQuery,
+  withTransaction,
   hashPassword,
   verifyPassword,
 } from './db.js';
@@ -13,8 +14,99 @@ import {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
+// Configuración controlada de CORS
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
+  : [];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Permitir peticiones sin encabezado origin (llamadas internas de Nginx, curl, healthcheck, tools)
+      if (!origin) return callback(null, true);
+
+      // En desarrollo o si no se especificó CORS_ORIGIN, permitir localhost en cualquier puerto
+      if (process.env.NODE_ENV !== 'production' || allowedOrigins.length === 0) {
+        if (/^https?:\/\/localhost(:\d+)?$/.test(origin) || /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)) {
+          return callback(null, true);
+        }
+      }
+
+      // Si hay orígenes específicos configurados para producción
+      if (allowedOrigins.length > 0) {
+        if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+          return callback(null, true);
+        }
+        return callback(new Error(`Acceso denegado por política de CORS para el origen: ${origin}`));
+      }
+
+      // En producción por defecto (reverse proxy same-origin de Nginx)
+      callback(null, true);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
 app.use(express.json());
+
+// Helper de validación y cálculo consistente de trabajadores en servidor
+function validateAndCalculateWorker(t) {
+  const horaEntrada = t.horaEntrada || '07:00';
+  const horaSalida = t.horaSalida || '16:00';
+  const almuerzoHoras = Math.max(0, Number(t.almuerzoHoras) || 0);
+
+  const [h1, m1] = horaEntrada.split(':').map(Number);
+  const [h2, m2] = horaSalida.split(':').map(Number);
+  let horasCalculadas = Number(t.horasTrabajadas);
+
+  if (!isNaN(h1) && !isNaN(m1) && !isNaN(h2) && !isNaN(m2)) {
+    const minEntrada = h1 * 60 + m1;
+    const minSalida = h2 * 60 + m2;
+    const diffMin = minSalida - minEntrada;
+    if (diffMin > 0) {
+      const netMin = Math.max(0, diffMin - (almuerzoHoras * 60));
+      horasCalculadas = Math.round((netMin / 60) * 100) / 100;
+    }
+  }
+
+  if (isNaN(horasCalculadas) || horasCalculadas < 0) {
+    horasCalculadas = 0;
+  }
+
+  const tipoPago = t.tipoPago || 'por_hora';
+  const tarifa = Number(t.tarifa) || 0;
+  let pagoTotal = 0;
+
+  if (tipoPago === 'sin_pago') {
+    pagoTotal = 0;
+  } else if (tipoPago === 'por_hora') {
+    pagoTotal = Math.round(horasCalculadas * tarifa * 100) / 100;
+  } else if (tipoPago === 'por_jornada') {
+    pagoTotal = Math.round(tarifa * 100) / 100;
+  } else if (tipoPago === 'pago_fijo') {
+    pagoTotal = Math.round((Number(t.pagoTotal) || tarifa) * 100) / 100;
+  }
+
+  return {
+    ...t,
+    horaEntrada,
+    horaSalida,
+    almuerzoHoras,
+    horasTrabajadas: horasCalculadas,
+    tipoPago,
+    tarifa,
+    pagoTotal,
+  };
+}
 
 // Token secret & helper
 const TOKEN_SECRET = process.env.TOKEN_SECRET || 'agrocacao-super-secret-token-key-2026';
@@ -336,7 +428,7 @@ app.delete('/api/usuarios/:id', authMiddleware, requireAdmin, async (req, res, n
 // ==========================================
 // 1. PROPIETARIOS
 // ==========================================
-app.get('/api/propietarios', async (req, res, next) => {
+app.get('/api/propietarios', authMiddleware, async (req, res, next) => {
   try {
     const rows = await allQuery('SELECT * FROM propietarios ORDER BY nombreCompleto ASC');
     res.json({ ok: true, data: rows });
@@ -345,7 +437,7 @@ app.get('/api/propietarios', async (req, res, next) => {
   }
 });
 
-app.post('/api/propietarios', async (req, res, next) => {
+app.post('/api/propietarios', authMiddleware, async (req, res, next) => {
   try {
     const { nombreCompleto, identificacion, telefono, direccion, observaciones, estado } = req.body;
     if (!nombreCompleto || !identificacion) {
@@ -371,7 +463,7 @@ app.post('/api/propietarios', async (req, res, next) => {
   }
 });
 
-app.put('/api/propietarios/:id', async (req, res, next) => {
+app.put('/api/propietarios/:id', authMiddleware, async (req, res, next) => {
   try {
     const { id } = req.params;
     const { nombreCompleto, identificacion, telefono, direccion, observaciones, estado } = req.body;
@@ -395,7 +487,7 @@ app.put('/api/propietarios/:id', async (req, res, next) => {
   }
 });
 
-app.delete('/api/propietarios/:id', async (req, res, next) => {
+app.delete('/api/propietarios/:id', authMiddleware, requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
     const cuadrasCount = await getQuery('SELECT COUNT(*) as count FROM cuadras WHERE propietarioId = ?', [id]);
@@ -416,7 +508,7 @@ app.delete('/api/propietarios/:id', async (req, res, next) => {
 // ==========================================
 // 2. CUADRAS
 // ==========================================
-app.get('/api/cuadras', async (req, res, next) => {
+app.get('/api/cuadras', authMiddleware, async (req, res, next) => {
   try {
     const { propietarioId, tipoPropiedad } = req.query;
     let sql = 'SELECT * FROM cuadras WHERE 1=1';
@@ -439,7 +531,7 @@ app.get('/api/cuadras', async (req, res, next) => {
   }
 });
 
-app.post('/api/cuadras', async (req, res, next) => {
+app.post('/api/cuadras', authMiddleware, async (req, res, next) => {
   try {
     const { propietarioId, nombre, lugar, referencia, tamanoM2, tipoPropiedad, estado, observaciones } = req.body;
     if (!propietarioId || !nombre || !lugar || !tamanoM2) {
@@ -473,7 +565,7 @@ app.post('/api/cuadras', async (req, res, next) => {
   }
 });
 
-app.put('/api/cuadras/:id', async (req, res, next) => {
+app.put('/api/cuadras/:id', authMiddleware, async (req, res, next) => {
   try {
     const { id } = req.params;
     const { propietarioId, nombre, lugar, referencia, tamanoM2, tipoPropiedad, estado, observaciones } = req.body;
@@ -499,7 +591,7 @@ app.put('/api/cuadras/:id', async (req, res, next) => {
   }
 });
 
-app.delete('/api/cuadras/:id', async (req, res, next) => {
+app.delete('/api/cuadras/:id', authMiddleware, requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
     await runQuery('DELETE FROM cuadras WHERE id = ?', [id]);
@@ -512,7 +604,7 @@ app.delete('/api/cuadras/:id', async (req, res, next) => {
 // ==========================================
 // 3. TRABAJADORES
 // ==========================================
-app.get('/api/trabajadores', async (req, res, next) => {
+app.get('/api/trabajadores', authMiddleware, async (req, res, next) => {
   try {
     const rows = await allQuery('SELECT * FROM trabajadores ORDER BY nombreCompleto ASC');
     res.json({ ok: true, data: rows });
@@ -521,7 +613,7 @@ app.get('/api/trabajadores', async (req, res, next) => {
   }
 });
 
-app.post('/api/trabajadores', async (req, res, next) => {
+app.post('/api/trabajadores', authMiddleware, async (req, res, next) => {
   try {
     const { nombreCompleto, identificacion, telefono, tipo, tarifaHora, tarifaDia, estado, observaciones } = req.body;
     if (!nombreCompleto || !identificacion || !tipo) {
@@ -555,7 +647,7 @@ app.post('/api/trabajadores', async (req, res, next) => {
   }
 });
 
-app.put('/api/trabajadores/:id', async (req, res, next) => {
+app.put('/api/trabajadores/:id', authMiddleware, async (req, res, next) => {
   try {
     const { id } = req.params;
     const { nombreCompleto, identificacion, telefono, tipo, tarifaHora, tarifaDia, estado, observaciones } = req.body;
@@ -591,7 +683,7 @@ app.put('/api/trabajadores/:id', async (req, res, next) => {
   }
 });
 
-app.delete('/api/trabajadores/:id', async (req, res, next) => {
+app.delete('/api/trabajadores/:id', authMiddleware, requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
     await runQuery('DELETE FROM trabajadores WHERE id = ?', [id]);
@@ -604,7 +696,7 @@ app.delete('/api/trabajadores/:id', async (req, res, next) => {
 // ==========================================
 // 4. TIPOS DE TRABAJO
 // ==========================================
-app.get('/api/tipos-trabajo', async (req, res, next) => {
+app.get('/api/tipos-trabajo', authMiddleware, async (req, res, next) => {
   try {
     const rows = await allQuery('SELECT * FROM tipos_trabajo ORDER BY nombre ASC');
     res.json({
@@ -619,7 +711,7 @@ app.get('/api/tipos-trabajo', async (req, res, next) => {
 // ==========================================
 // 5. JORNADAS (MULTI-PROPIEDAD Y MULTI-TRABAJADOR)
 // ==========================================
-app.get('/api/jornadas', async (req, res, next) => {
+app.get('/api/jornadas', authMiddleware, async (req, res, next) => {
   try {
     const jornadasRows = await allQuery('SELECT * FROM jornadas ORDER BY fecha DESC, created_at DESC');
 
@@ -757,7 +849,7 @@ app.get('/api/jornadas', async (req, res, next) => {
   }
 });
 
-app.post('/api/jornadas', async (req, res, next) => {
+app.post('/api/jornadas', authMiddleware, async (req, res, next) => {
   try {
     const {
       propietarioId,
@@ -769,6 +861,8 @@ app.post('/api/jornadas', async (req, res, next) => {
       esAgrupada,
       observaciones,
       trabajadores = [],
+      insumosUtilizados = [],
+      insumosRequeridos = [],
     } = req.body;
 
     // Construir lista de propiedades trabajadas
@@ -803,12 +897,14 @@ app.post('/api/jornadas', async (req, res, next) => {
     const codigo = `JORN-2026-${String((jornadaCount?.count || 0) + 1).padStart(3, '0')}`;
     const id = `jorn-${Date.now()}`;
 
-    // Calcular totales de la jornada
+    // Validar y calcular trabajadores en servidor
+    const calculatedWorkers = trabajadores.map(validateAndCalculateWorker);
+
     let totalHoras = 0;
     let totalHorasFamiliares = 0;
     let totalPago = 0;
 
-    trabajadores.forEach((t) => {
+    calculatedWorkers.forEach((t) => {
       const h = Number(t.horasTrabajadas) || 0;
       totalHoras += h;
       if (t.tipoPago === 'sin_pago' || Number(t.pagoTotal) === 0) {
@@ -818,90 +914,99 @@ app.post('/api/jornadas', async (req, res, next) => {
       }
     });
 
-    await runQuery(
-      `INSERT INTO jornadas (id, codigo, propietarioId, cuadraId, tipoTrabajoId, fecha, fechaFin, esAgrupada, totalHoras, totalHorasFamiliares, totalPago, observaciones)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        codigo,
-        primaryPropId,
-        primaryCuadraId,
-        tipoTrabajoId,
-        fecha,
-        fechaFin || fecha,
-        esAgrupada ? 1 : 0,
-        totalHoras,
-        totalHorasFamiliares,
-        totalPago,
-        observaciones || '',
-      ]
-    );
+    totalHoras = Math.round(totalHoras * 100) / 100;
+    totalHorasFamiliares = Math.round(totalHorasFamiliares * 100) / 100;
+    totalPago = Math.round(totalPago * 100) / 100;
 
-    // Guardar propiedades trabajadas en jornada_propiedades
-    for (const p of listaPropiedades) {
-      const jpId = p.id && !p.id.startsWith('jp-auto') ? p.id : `jp-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    await withTransaction(async () => {
       await runQuery(
-        `INSERT INTO jornada_propiedades (id, jornadaId, propietarioId, cuadraId, horasEstimadas, observaciones)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO jornadas (id, codigo, propietarioId, cuadraId, tipoTrabajoId, fecha, fechaFin, esAgrupada, totalHoras, totalHorasFamiliares, totalPago, observaciones)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          jpId,
           id,
-          p.propietarioId,
-          p.cuadraId,
-          Number(p.horasEstimadas) || 0,
-          p.observaciones || '',
+          codigo,
+          primaryPropId,
+          primaryCuadraId,
+          tipoTrabajoId,
+          fecha,
+          fechaFin || fecha,
+          esAgrupada ? 1 : 0,
+          totalHoras,
+          totalHorasFamiliares,
+          totalPago,
+          observaciones || '',
         ]
       );
-    }
 
-    // Insertar cada trabajador de la jornada
-    for (const t of trabajadores) {
-      const jtId = `jt-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-      await runQuery(
-        `INSERT INTO jornada_trabajadores (
-          id, jornadaId, trabajadorId, horaEntrada, horaSalida, almuerzoHoras,
-          horasTrabajadas, tipoPago, tarifa, pagoTotal, estadoPago, observaciones
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          jtId,
-          id,
-          t.trabajadorId,
-          t.horaEntrada || '07:00',
-          t.horaSalida || '16:00',
-          Number(t.almuerzoHoras) || 0,
-          Number(t.horasTrabajadas) || 0,
-          t.tipoPago || 'por_hora',
-          Number(t.tarifa) || 0,
-          Number(t.pagoTotal) || 0,
-          t.estadoPago || 'pendiente',
-          t.observaciones || '',
-        ]
-      );
-    }
+      // Guardar propiedades trabajadas en jornada_propiedades
+      for (let i = 0; i < listaPropiedades.length; i++) {
+        const p = listaPropiedades[i];
+        const jpId = `jp-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 8)}`;
+        await runQuery(
+          `INSERT OR REPLACE INTO jornada_propiedades (id, jornadaId, propietarioId, cuadraId, horasEstimadas, observaciones)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            jpId,
+            id,
+            p.propietarioId,
+            p.cuadraId,
+            Number(p.horasEstimadas) || 0,
+            p.observaciones || '',
+          ]
+        );
+      }
 
-    // Insertar insumos utilizados y requeridos si se proporcionaron
-    const { insumosUtilizados = [], insumosRequeridos = [] } = req.body;
-    for (const iu of insumosUtilizados) {
-      const jiId = `ji-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-      const cant = Number(iu.cantidad) || 0;
-      const cu = Number(iu.costoUnitario) || 0;
-      await runQuery(
-        `INSERT INTO jornada_insumos (id, jornadaId, insumoId, nombreInsumo, categoria, tipo, cantidad, unidad, costoUnitario, costoTotal, estado, observaciones)
-         VALUES (?, ?, ?, ?, ?, 'utilizado', ?, ?, ?, ?, 'utilizado', ?)`,
-        [jiId, id, iu.insumoId || null, iu.nombreInsumo || iu.nombre || 'Insumo', iu.categoria || '', cant, iu.unidad || 'unidad', cu, Number(iu.costoTotal) || (cant * cu), iu.observaciones || '']
-      );
-    }
+      // Insertar cada trabajador validado
+      for (let i = 0; i < calculatedWorkers.length; i++) {
+        const t = calculatedWorkers[i];
+        const jtId = `jt-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 8)}`;
+        await runQuery(
+          `INSERT OR REPLACE INTO jornada_trabajadores (
+            id, jornadaId, trabajadorId, horaEntrada, horaSalida, almuerzoHoras,
+            horasTrabajadas, tipoPago, tarifa, pagoTotal, estadoPago, observaciones
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            jtId,
+            id,
+            t.trabajadorId,
+            t.horaEntrada,
+            t.horaSalida,
+            t.almuerzoHoras,
+            t.horasTrabajadas,
+            t.tipoPago,
+            t.tarifa,
+            t.pagoTotal,
+            t.estadoPago || 'pendiente',
+            t.observaciones || '',
+          ]
+        );
+      }
 
-    for (const ir of insumosRequeridos) {
-      const jiId = `ji-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-      const cant = Number(ir.cantidad) || 0;
-      const cu = Number(ir.costoUnitario) || 0;
-      await runQuery(
-        `INSERT INTO jornada_insumos (id, jornadaId, insumoId, nombreInsumo, categoria, tipo, cantidad, unidad, costoUnitario, costoTotal, estado, observaciones)
-         VALUES (?, ?, ?, ?, ?, 'requerido', ?, ?, ?, ?, ?, ?)`,
-        [jiId, id, ir.insumoId || null, ir.nombreInsumo || ir.nombre || 'Insumo', ir.categoria || '', cant, ir.unidad || 'unidad', cu, Number(ir.costoTotal) || (cant * cu), ir.estado || 'pendiente', ir.observaciones || '']
-      );
-    }
+      // Insumos utilizados y requeridos
+      for (let i = 0; i < insumosUtilizados.length; i++) {
+        const iu = insumosUtilizados[i];
+        const jiId = `ji-${Date.now()}-u${i}-${Math.random().toString(36).substring(2, 8)}`;
+        const cant = Number(iu.cantidad) || 0;
+        const cu = Number(iu.costoUnitario) || 0;
+        await runQuery(
+          `INSERT OR REPLACE INTO jornada_insumos (id, jornadaId, insumoId, nombreInsumo, categoria, tipo, cantidad, unidad, costoUnitario, costoTotal, estado, observaciones)
+           VALUES (?, ?, ?, ?, ?, 'utilizado', ?, ?, ?, ?, 'utilizado', ?)`,
+          [jiId, id, iu.insumoId || null, iu.nombreInsumo || iu.nombre || 'Insumo', iu.categoria || '', cant, iu.unidad || 'unidad', cu, Number(iu.costoTotal) || (cant * cu), iu.observaciones || '']
+        );
+      }
+
+      for (let i = 0; i < insumosRequeridos.length; i++) {
+        const ir = insumosRequeridos[i];
+        const jiId = `ji-${Date.now()}-r${i}-${Math.random().toString(36).substring(2, 8)}`;
+        const cant = Number(ir.cantidad) || 0;
+        const cu = Number(ir.costoUnitario) || 0;
+        await runQuery(
+          `INSERT OR REPLACE INTO jornada_insumos (id, jornadaId, insumoId, nombreInsumo, categoria, tipo, cantidad, unidad, costoUnitario, costoTotal, estado, observaciones)
+           VALUES (?, ?, ?, ?, ?, 'requerido', ?, ?, ?, ?, ?, ?)`,
+          [jiId, id, ir.insumoId || null, ir.nombreInsumo || ir.nombre || 'Insumo', ir.categoria || '', cant, ir.unidad || 'unidad', cu, Number(ir.costoTotal) || (cant * cu), ir.estado || 'pendiente', ir.observaciones || '']
+        );
+      }
+    });
 
     res.status(201).json({ ok: true, mensaje: 'Jornada registrada exitosamente.', id, codigo });
   } catch (err) {
@@ -909,7 +1014,7 @@ app.post('/api/jornadas', async (req, res, next) => {
   }
 });
 
-app.put('/api/jornadas/:id/resultado', async (req, res, next) => {
+app.put('/api/jornadas/:id/resultado', authMiddleware, async (req, res, next) => {
   try {
     const { id } = req.params;
     const {
@@ -917,9 +1022,7 @@ app.put('/api/jornadas/:id/resultado', async (req, res, next) => {
       cantidadCosechada,
       unidadMedida,
       precioVentaUnitario,
-      ingresoGenerado,
       gastosRelacionados,
-      gananciaNeta,
       tipoGrano,
       resultadoTexto,
       problemasEncontrados,
@@ -927,122 +1030,179 @@ app.put('/api/jornadas/:id/resultado', async (req, res, next) => {
       materialesUtilizados = [],
       materialesRequeridos = [],
       cosechasPorPropietario = [],
+      insumosUtilizados = [],
+      insumosRequeridos = [],
     } = req.body;
 
-    if (esCosecha) {
-      await runQuery(
-        `UPDATE jornadas
-         SET resultado_esCosecha = 1,
-             resultado_cantidad = ?,
-             resultado_unidad = ?,
-             resultado_precio = ?,
-             resultado_ingreso = ?,
-             resultado_gastos = ?,
-             resultado_ganancia = ?,
-             resultado_tipoGrano = ?,
-             resultado_observaciones = ?
-         WHERE id = ?`,
-        [
-          Number(cantidadCosechada) || 0,
-          unidadMedida || 'libras',
-          Number(precioVentaUnitario) || 0,
-          Number(ingresoGenerado) || 0,
-          Number(gastosRelacionados) || 0,
-          Number(gananciaNeta) || 0,
-          tipoGrano || 'Cacao Nacional Fino de Aroma',
-          observaciones || '',
-          id,
-        ]
-      );
-
-      // Guardar distribución por propietario en cosechas_propietario
-      await runQuery('DELETE FROM cosechas_propietario WHERE jornadaId = ?', [id]);
-      for (const cp of cosechasPorPropietario) {
-        const cpId = cp.id && !cp.id.startsWith('temp-') ? cp.id : `cp-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-        const cuadraIdsJson = JSON.stringify(Array.isArray(cp.cuadraIds) ? cp.cuadraIds : [cp.cuadraIds]);
-        await runQuery(
-          `INSERT INTO cosechas_propietario (
-            id, jornadaId, propietarioId, cuadraIds, cantidad, unidad, precioUnitario,
-            gastosRelacionados, ingresoGenerado, gananciaNeta, tipoGrano, observaciones
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            cpId,
-            id,
-            cp.propietarioId,
-            cuadraIdsJson,
-            Number(cp.cantidad) || 0,
-            cp.unidad || unidadMedida || 'libras',
-            Number(cp.precioUnitario) || 0,
-            Number(cp.gastosRelacionados) || 0,
-            Number(cp.ingresoGenerado) || 0,
-            Number(cp.gananciaNeta) || 0,
-            cp.tipoGrano || tipoGrano || '',
-            cp.observaciones || '',
-          ]
-        );
-      }
-    } else {
-      await runQuery(
-        `UPDATE jornadas
-         SET resultado_esCosecha = 0,
-             resultado_texto = ?,
-             resultado_problemas = ?,
-             resultado_observaciones = ?
-         WHERE id = ?`,
-        [resultadoTexto || '', problemasEncontrados || '', observaciones || '', id]
-      );
-
-      // Limpiar y reinsertar materiales
-      await runQuery('DELETE FROM materiales_utilizados WHERE jornadaId = ?', [id]);
-      for (const m of materialesUtilizados) {
-        await runQuery(
-          'INSERT INTO materiales_utilizados (id, jornadaId, nombre, cantidad, unidad) VALUES (?, ?, ?, ?, ?)',
-          [`mu-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`, id, m.nombre, Number(m.cantidad), m.unidad]
-        );
-      }
-
-      await runQuery('DELETE FROM materiales_requeridos WHERE jornadaId = ?', [id]);
-      for (const r of materialesRequeridos) {
-        await runQuery(
-          'INSERT INTO materiales_requeridos (id, jornadaId, nombre, cantidad, unidad, esPerecible, estado, observaciones) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          [
-            `mr-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-            id,
-            r.nombre,
-            Number(r.cantidad),
-            r.unidad,
-            r.esPerecible ? 1 : 0,
-            r.estado || 'pendiente',
-            r.observaciones || '',
-          ]
-        );
-      }
+    const jornada = await getQuery('SELECT id FROM jornadas WHERE id = ?', [id]);
+    if (!jornada) {
+      return res.status(404).json({ ok: false, mensaje: 'Jornada no encontrada.' });
     }
 
-    // Guardar insumos utilizados y requeridos si vienen en el payload
-    const { insumosUtilizados = [], insumosRequeridos = [] } = req.body;
-    if (insumosUtilizados.length > 0 || insumosRequeridos.length > 0) {
-      await runQuery('DELETE FROM jornada_insumos WHERE jornadaId = ?', [id]);
-      for (const iu of insumosUtilizados) {
-        const jiId = `ji-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-        const cant = Number(iu.cantidad) || 0;
-        const cu = Number(iu.costoUnitario) || 0;
-        await runQuery(
-          `INSERT INTO jornada_insumos (id, jornadaId, insumoId, nombreInsumo, categoria, tipo, cantidad, unidad, costoUnitario, costoTotal, estado, observaciones)
-           VALUES (?, ?, ?, ?, ?, 'utilizado', ?, ?, ?, ?, 'utilizado', ?)`,
-          [jiId, id, iu.insumoId || null, iu.nombreInsumo || iu.nombre || 'Insumo', iu.categoria || '', cant, iu.unidad || 'unidad', cu, Number(iu.costoTotal) || (cant * cu), iu.observaciones || '']
-        );
+    if (esCosecha) {
+      const cantTotal = Number(cantidadCosechada) || 0;
+      const unitPrice = Number(precioVentaUnitario) || 0;
+      const gastos = Number(gastosRelacionados) || 0;
+      const ingTotal = Math.round(cantTotal * unitPrice * 100) / 100;
+      const ganancia = Math.round((ingTotal - gastos) * 100) / 100;
+
+      // Validación de regla de negocio: la suma de distribución no debe exceder la cosecha total
+      const totalDistribuido = cosechasPorPropietario.reduce(
+        (acc, cp) => acc + (Number(cp.cantidad) || 0),
+        0
+      );
+
+      if (totalDistribuido > cantTotal) {
+        return res.status(400).json({
+          ok: false,
+          mensaje: `La suma de cosechas distribuidas (${totalDistribuido} ${unidadMedida || 'lb'}) no puede superar la cantidad total cosechada (${cantTotal} ${unidadMedida || 'lb'}).`,
+        });
       }
-      for (const ir of insumosRequeridos) {
-        const jiId = `ji-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-        const cant = Number(ir.cantidad) || 0;
-        const cu = Number(ir.costoUnitario) || 0;
+
+      await withTransaction(async () => {
         await runQuery(
-          `INSERT INTO jornada_insumos (id, jornadaId, insumoId, nombreInsumo, categoria, tipo, cantidad, unidad, costoUnitario, costoTotal, estado, observaciones)
-           VALUES (?, ?, ?, ?, ?, 'requerido', ?, ?, ?, ?, ?, ?)`,
-          [jiId, id, ir.insumoId || null, ir.nombreInsumo || ir.nombre || 'Insumo', ir.categoria || '', cant, ir.unidad || 'unidad', cu, Number(ir.costoTotal) || (cant * cu), ir.estado || 'pendiente', ir.observaciones || '']
+          `UPDATE jornadas
+           SET resultado_esCosecha = 1,
+               resultado_cantidad = ?,
+               resultado_unidad = ?,
+               resultado_precio = ?,
+               resultado_ingreso = ?,
+               resultado_gastos = ?,
+               resultado_ganancia = ?,
+               resultado_tipoGrano = ?,
+               resultado_observaciones = ?
+           WHERE id = ?`,
+          [
+            cantTotal,
+            unidadMedida || 'libras',
+            unitPrice,
+            ingTotal,
+            gastos,
+            ganancia,
+            tipoGrano || 'Cacao Nacional Fino de Aroma',
+            observaciones || '',
+            id,
+          ]
         );
-      }
+
+        // Guardar distribución por propietario garantizando precio unitario consistente
+        await runQuery('DELETE FROM cosechas_propietario WHERE jornadaId = ?', [id]);
+        for (const cp of cosechasPorPropietario) {
+          const cpId = cp.id && !cp.id.startsWith('temp-') && !cp.id.startsWith('cp-auto') ? cp.id : `cp-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+          const cuadraIdsJson = JSON.stringify(Array.isArray(cp.cuadraIds) ? cp.cuadraIds : [cp.cuadraIds]);
+          const cpCant = Number(cp.cantidad) || 0;
+          const cpIngreso = Math.round(cpCant * unitPrice * 100) / 100;
+          const cpGastos = Number(cp.gastosRelacionados) || 0;
+          const cpGanancia = Math.round((cpIngreso - cpGastos) * 100) / 100;
+
+          await runQuery(
+            `INSERT INTO cosechas_propietario (
+              id, jornadaId, propietarioId, cuadraIds, cantidad, unidad, precioUnitario,
+              gastosRelacionados, ingresoGenerado, gananciaNeta, tipoGrano, observaciones
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              cpId,
+              id,
+              cp.propietarioId,
+              cuadraIdsJson,
+              cpCant,
+              cp.unidad || unidadMedida || 'libras',
+              unitPrice, // Un solo precio unitario consistente para todos
+              cpGastos,
+              cpIngreso,
+              cpGanancia,
+              cp.tipoGrano || tipoGrano || '',
+              cp.observaciones || '',
+            ]
+          );
+        }
+
+        // Manejar insumos utilizados y requeridos
+        if (insumosUtilizados.length > 0 || insumosRequeridos.length > 0) {
+          await runQuery('DELETE FROM jornada_insumos WHERE jornadaId = ?', [id]);
+          for (const iu of insumosUtilizados) {
+            const jiId = `ji-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+            const cant = Number(iu.cantidad) || 0;
+            const cu = Number(iu.costoUnitario) || 0;
+            await runQuery(
+              `INSERT INTO jornada_insumos (id, jornadaId, insumoId, nombreInsumo, categoria, tipo, cantidad, unidad, costoUnitario, costoTotal, estado, observaciones)
+               VALUES (?, ?, ?, ?, ?, 'utilizado', ?, ?, ?, ?, 'utilizado', ?)`,
+              [jiId, id, iu.insumoId || null, iu.nombreInsumo || iu.nombre || 'Insumo', iu.categoria || '', cant, iu.unidad || 'unidad', cu, Number(iu.costoTotal) || (cant * cu), iu.observaciones || '']
+            );
+          }
+          for (const ir of insumosRequeridos) {
+            const jiId = `ji-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+            const cant = Number(ir.cantidad) || 0;
+            const cu = Number(ir.costoUnitario) || 0;
+            await runQuery(
+              `INSERT INTO jornada_insumos (id, jornadaId, insumoId, nombreInsumo, categoria, tipo, cantidad, unidad, costoUnitario, costoTotal, estado, observaciones)
+               VALUES (?, ?, ?, ?, ?, 'requerido', ?, ?, ?, ?, ?, ?)`,
+              [jiId, id, ir.insumoId || null, ir.nombreInsumo || ir.nombre || 'Insumo', ir.categoria || '', cant, ir.unidad || 'unidad', cu, Number(ir.costoTotal) || (cant * cu), ir.estado || 'pendiente', ir.observaciones || '']
+            );
+          }
+        }
+      });
+    } else {
+      await withTransaction(async () => {
+        await runQuery(
+          `UPDATE jornadas
+           SET resultado_esCosecha = 0,
+               resultado_texto = ?,
+               resultado_problemas = ?,
+               resultado_observaciones = ?
+           WHERE id = ?`,
+          [resultadoTexto || '', problemasEncontrados || '', observaciones || '', id]
+        );
+
+        await runQuery('DELETE FROM materiales_utilizados WHERE jornadaId = ?', [id]);
+        for (const m of materialesUtilizados) {
+          await runQuery(
+            'INSERT INTO materiales_utilizados (id, jornadaId, nombre, cantidad, unidad) VALUES (?, ?, ?, ?, ?)',
+            [`mu-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`, id, m.nombre, Number(m.cantidad), m.unidad]
+          );
+        }
+
+        await runQuery('DELETE FROM materiales_requeridos WHERE jornadaId = ?', [id]);
+        for (const r of materialesRequeridos) {
+          await runQuery(
+            'INSERT INTO materiales_requeridos (id, jornadaId, nombre, cantidad, unidad, esPerecible, estado, observaciones) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+              `mr-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+              id,
+              r.nombre,
+              Number(r.cantidad),
+              r.unidad,
+              r.esPerecible ? 1 : 0,
+              r.estado || 'pendiente',
+              r.observaciones || '',
+            ]
+          );
+        }
+
+        if (insumosUtilizados.length > 0 || insumosRequeridos.length > 0) {
+          await runQuery('DELETE FROM jornada_insumos WHERE jornadaId = ?', [id]);
+          for (const iu of insumosUtilizados) {
+            const jiId = `ji-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+            const cant = Number(iu.cantidad) || 0;
+            const cu = Number(iu.costoUnitario) || 0;
+            await runQuery(
+              `INSERT INTO jornada_insumos (id, jornadaId, insumoId, nombreInsumo, categoria, tipo, cantidad, unidad, costoUnitario, costoTotal, estado, observaciones)
+               VALUES (?, ?, ?, ?, ?, 'utilizado', ?, ?, ?, ?, 'utilizado', ?)`,
+              [jiId, id, iu.insumoId || null, iu.nombreInsumo || iu.nombre || 'Insumo', iu.categoria || '', cant, iu.unidad || 'unidad', cu, Number(iu.costoTotal) || (cant * cu), iu.observaciones || '']
+            );
+          }
+          for (const ir of insumosRequeridos) {
+            const jiId = `ji-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+            const cant = Number(ir.cantidad) || 0;
+            const cu = Number(ir.costoUnitario) || 0;
+            await runQuery(
+              `INSERT INTO jornada_insumos (id, jornadaId, insumoId, nombreInsumo, categoria, tipo, cantidad, unidad, costoUnitario, costoTotal, estado, observaciones)
+               VALUES (?, ?, ?, ?, ?, 'requerido', ?, ?, ?, ?, ?, ?)`,
+              [jiId, id, ir.insumoId || null, ir.nombreInsumo || ir.nombre || 'Insumo', ir.categoria || '', cant, ir.unidad || 'unidad', cu, Number(ir.costoTotal) || (cant * cu), ir.estado || 'pendiente', ir.observaciones || '']
+            );
+          }
+        }
+      });
     }
 
     res.json({ ok: true, mensaje: 'Resultados de la jornada guardados exitosamente.' });
@@ -1052,7 +1212,7 @@ app.put('/api/jornadas/:id/resultado', async (req, res, next) => {
 });
 
 // Modificar datos generales de una jornada (propiedades, trabajadores, insumos)
-app.put('/api/jornadas/:id', async (req, res, next) => {
+app.put('/api/jornadas/:id', authMiddleware, async (req, res, next) => {
   try {
     const { id } = req.params;
     const {
@@ -1067,12 +1227,13 @@ app.put('/api/jornadas/:id', async (req, res, next) => {
       insumosRequeridos = [],
     } = req.body;
 
-    // Calcular totales
+    const calculatedWorkers = trabajadores.map(validateAndCalculateWorker);
+
     let totalHoras = 0;
     let totalHorasFamiliares = 0;
     let totalPago = 0;
 
-    trabajadores.forEach((t) => {
+    calculatedWorkers.forEach((t) => {
       const h = Number(t.horasTrabajadas) || 0;
       totalHoras += h;
       if (t.tipoPago === 'sin_pago' || Number(t.pagoTotal) === 0) {
@@ -1082,90 +1243,100 @@ app.put('/api/jornadas/:id', async (req, res, next) => {
       }
     });
 
+    totalHoras = Math.round(totalHoras * 100) / 100;
+    totalHorasFamiliares = Math.round(totalHorasFamiliares * 100) / 100;
+    totalPago = Math.round(totalPago * 100) / 100;
+
     const primaryPropId = propiedades[0]?.propietarioId;
     const primaryCuadraId = propiedades[0]?.cuadraId;
 
-    await runQuery(
-      `UPDATE jornadas
-       SET tipoTrabajoId = COALESCE(?, tipoTrabajoId),
-           fecha = COALESCE(?, fecha),
-           fechaFin = COALESCE(?, fechaFin),
-           esAgrupada = COALESCE(?, esAgrupada),
-           totalHoras = ?,
-           totalHorasFamiliares = ?,
-           totalPago = ?,
-           propietarioId = COALESCE(?, propietarioId),
-           cuadraId = COALESCE(?, cuadraId),
-           observaciones = COALESCE(?, observaciones)
-       WHERE id = ?`,
-      [tipoTrabajoId, fecha, fechaFin || fecha, esAgrupada ? 1 : 0, totalHoras, totalHorasFamiliares, totalPago, primaryPropId, primaryCuadraId, observaciones, id]
-    );
+    await withTransaction(async () => {
+      await runQuery(
+        `UPDATE jornadas
+         SET tipoTrabajoId = COALESCE(?, tipoTrabajoId),
+             fecha = COALESCE(?, fecha),
+             fechaFin = COALESCE(?, fechaFin),
+             esAgrupada = COALESCE(?, esAgrupada),
+             totalHoras = ?,
+             totalHorasFamiliares = ?,
+             totalPago = ?,
+             propietarioId = COALESCE(?, propietarioId),
+             cuadraId = COALESCE(?, cuadraId),
+             observaciones = COALESCE(?, observaciones)
+         WHERE id = ?`,
+        [tipoTrabajoId, fecha, fechaFin || fecha, esAgrupada ? 1 : 0, totalHoras, totalHorasFamiliares, totalPago, primaryPropId, primaryCuadraId, observaciones, id]
+      );
 
-    // Actualizar propiedades
-    if (propiedades.length > 0) {
-      await runQuery('DELETE FROM jornada_propiedades WHERE jornadaId = ?', [id]);
-      for (const p of propiedades) {
-        const jpId = p.id && !p.id.startsWith('jp-auto') ? p.id : `jp-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-        await runQuery(
-          `INSERT INTO jornada_propiedades (id, jornadaId, propietarioId, cuadraId, horasEstimadas, observaciones)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [jpId, id, p.propietarioId, p.cuadraId, Number(p.horasEstimadas) || 0, p.observaciones || '']
-        );
+      // Actualizar propiedades
+      if (propiedades.length > 0) {
+        await runQuery('DELETE FROM jornada_propiedades WHERE jornadaId = ?', [id]);
+        for (let i = 0; i < propiedades.length; i++) {
+          const p = propiedades[i];
+          const jpId = `jp-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 8)}`;
+          await runQuery(
+            `INSERT OR REPLACE INTO jornada_propiedades (id, jornadaId, propietarioId, cuadraId, horasEstimadas, observaciones)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [jpId, id, p.propietarioId, p.cuadraId, Number(p.horasEstimadas) || 0, p.observaciones || '']
+          );
+        }
       }
-    }
 
-    // Actualizar trabajadores
-    if (trabajadores.length > 0) {
-      await runQuery('DELETE FROM jornada_trabajadores WHERE jornadaId = ?', [id]);
-      for (const t of trabajadores) {
-        const jtId = `jt-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-        await runQuery(
-          `INSERT INTO jornada_trabajadores (
-            id, jornadaId, trabajadorId, horaEntrada, horaSalida, almuerzoHoras,
-            horasTrabajadas, tipoPago, tarifa, pagoTotal, estadoPago, observaciones
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            jtId,
-            id,
-            t.trabajadorId,
-            t.horaEntrada || '07:00',
-            t.horaSalida || '16:00',
-            Number(t.almuerzoHoras) || 0,
-            Number(t.horasTrabajadas) || 0,
-            t.tipoPago || 'por_hora',
-            Number(t.tarifa) || 0,
-            Number(t.pagoTotal) || 0,
-            t.estadoPago || 'pendiente',
-            t.observaciones || '',
-          ]
-        );
+      // Actualizar trabajadores validados
+      if (calculatedWorkers.length > 0) {
+        await runQuery('DELETE FROM jornada_trabajadores WHERE jornadaId = ?', [id]);
+        for (let i = 0; i < calculatedWorkers.length; i++) {
+          const t = calculatedWorkers[i];
+          const jtId = `jt-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 8)}`;
+          await runQuery(
+            `INSERT OR REPLACE INTO jornada_trabajadores (
+              id, jornadaId, trabajadorId, horaEntrada, horaSalida, almuerzoHoras,
+              horasTrabajadas, tipoPago, tarifa, pagoTotal, estadoPago, observaciones
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              jtId,
+              id,
+              t.trabajadorId,
+              t.horaEntrada,
+              t.horaSalida,
+              t.almuerzoHoras,
+              t.horasTrabajadas,
+              t.tipoPago,
+              t.tarifa,
+              t.pagoTotal,
+              t.estadoPago || 'pendiente',
+              t.observaciones || '',
+            ]
+          );
+        }
       }
-    }
 
-    // Actualizar insumos
-    if (insumosUtilizados.length > 0 || insumosRequeridos.length > 0) {
-      await runQuery('DELETE FROM jornada_insumos WHERE jornadaId = ?', [id]);
-      for (const iu of insumosUtilizados) {
-        const jiId = `ji-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-        const cant = Number(iu.cantidad) || 0;
-        const cu = Number(iu.costoUnitario) || 0;
-        await runQuery(
-          `INSERT INTO jornada_insumos (id, jornadaId, insumoId, nombreInsumo, categoria, tipo, cantidad, unidad, costoUnitario, costoTotal, estado, observaciones)
-           VALUES (?, ?, ?, ?, ?, 'utilizado', ?, ?, ?, ?, 'utilizado', ?)`,
-          [jiId, id, iu.insumoId || null, iu.nombreInsumo || iu.nombre || 'Insumo', iu.categoria || '', cant, iu.unidad || 'unidad', cu, Number(iu.costoTotal) || (cant * cu), iu.observaciones || '']
-        );
+      // Actualizar insumos
+      if (insumosUtilizados.length > 0 || insumosRequeridos.length > 0) {
+        await runQuery('DELETE FROM jornada_insumos WHERE jornadaId = ?', [id]);
+        for (let i = 0; i < insumosUtilizados.length; i++) {
+          const iu = insumosUtilizados[i];
+          const jiId = `ji-${Date.now()}-u${i}-${Math.random().toString(36).substring(2, 8)}`;
+          const cant = Number(iu.cantidad) || 0;
+          const cu = Number(iu.costoUnitario) || 0;
+          await runQuery(
+            `INSERT OR REPLACE INTO jornada_insumos (id, jornadaId, insumoId, nombreInsumo, categoria, tipo, cantidad, unidad, costoUnitario, costoTotal, estado, observaciones)
+             VALUES (?, ?, ?, ?, ?, 'utilizado', ?, ?, ?, ?, 'utilizado', ?)`,
+            [jiId, id, iu.insumoId || null, iu.nombreInsumo || iu.nombre || 'Insumo', iu.categoria || '', cant, iu.unidad || 'unidad', cu, Number(iu.costoTotal) || (cant * cu), iu.observaciones || '']
+          );
+        }
+        for (let i = 0; i < insumosRequeridos.length; i++) {
+          const ir = insumosRequeridos[i];
+          const jiId = `ji-${Date.now()}-r${i}-${Math.random().toString(36).substring(2, 8)}`;
+          const cant = Number(ir.cantidad) || 0;
+          const cu = Number(ir.costoUnitario) || 0;
+          await runQuery(
+            `INSERT OR REPLACE INTO jornada_insumos (id, jornadaId, insumoId, nombreInsumo, categoria, tipo, cantidad, unidad, costoUnitario, costoTotal, estado, observaciones)
+             VALUES (?, ?, ?, ?, ?, 'requerido', ?, ?, ?, ?, ?, ?)`,
+            [jiId, id, ir.insumoId || null, ir.nombreInsumo || ir.nombre || 'Insumo', ir.categoria || '', cant, ir.unidad || 'unidad', cu, Number(ir.costoTotal) || (cant * cu), ir.estado || 'pendiente', ir.observaciones || '']
+          );
+        }
       }
-      for (const ir of insumosRequeridos) {
-        const jiId = `ji-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-        const cant = Number(ir.cantidad) || 0;
-        const cu = Number(ir.costoUnitario) || 0;
-        await runQuery(
-          `INSERT INTO jornada_insumos (id, jornadaId, insumoId, nombreInsumo, categoria, tipo, cantidad, unidad, costoUnitario, costoTotal, estado, observaciones)
-           VALUES (?, ?, ?, ?, ?, 'requerido', ?, ?, ?, ?, ?, ?)`,
-          [jiId, id, ir.insumoId || null, ir.nombreInsumo || ir.nombre || 'Insumo', ir.categoria || '', cant, ir.unidad || 'unidad', cu, Number(ir.costoTotal) || (cant * cu), ir.estado || 'pendiente', ir.observaciones || '']
-        );
-      }
-    }
+    });
 
     res.json({ ok: true, mensaje: 'Jornada actualizada correctamente.' });
   } catch (err) {
@@ -1176,7 +1347,7 @@ app.put('/api/jornadas/:id', async (req, res, next) => {
 // ==========================================
 // 6. INSUMOS Y RECURSOS AGRÍCOLAS
 // ==========================================
-app.get('/api/insumos', async (req, res, next) => {
+app.get('/api/insumos', authMiddleware, async (req, res, next) => {
   try {
     const rows = await allQuery('SELECT * FROM insumos ORDER BY categoria ASC, nombre ASC');
     const enriched = await Promise.all(
@@ -1200,7 +1371,7 @@ app.get('/api/insumos', async (req, res, next) => {
   }
 });
 
-app.post('/api/insumos', async (req, res, next) => {
+app.post('/api/insumos', authMiddleware, async (req, res, next) => {
   try {
     const { nombre, categoria, unidad, stockInicial, costoUnitario, estado, observaciones } = req.body;
     if (!nombre || !categoria || !unidad) {
@@ -1224,7 +1395,7 @@ app.post('/api/insumos', async (req, res, next) => {
   }
 });
 
-app.put('/api/insumos/:id', async (req, res, next) => {
+app.put('/api/insumos/:id', authMiddleware, async (req, res, next) => {
   try {
     const { id } = req.params;
     const { nombre, categoria, unidad, stockInicial, costoUnitario, estado, observaciones } = req.body;
@@ -1247,7 +1418,7 @@ app.put('/api/insumos/:id', async (req, res, next) => {
   }
 });
 
-app.delete('/api/insumos/:id', async (req, res, next) => {
+app.delete('/api/insumos/:id', authMiddleware, requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
     const usage = await getQuery('SELECT COUNT(*) as count FROM jornada_insumos WHERE insumoId = ?', [id]);
@@ -1264,7 +1435,7 @@ app.delete('/api/insumos/:id', async (req, res, next) => {
   }
 });
 
-app.get('/api/insumos/:id/historial', async (req, res, next) => {
+app.get('/api/insumos/:id/historial', authMiddleware, async (req, res, next) => {
   try {
     const { id } = req.params;
     const ins = await getQuery('SELECT * FROM insumos WHERE id = ?', [id]);
@@ -1321,7 +1492,7 @@ app.get('/api/insumos/:id/historial', async (req, res, next) => {
   }
 });
 
-app.post('/api/pagos/liquidar', async (req, res, next) => {
+app.post('/api/pagos/liquidar', authMiddleware, async (req, res, next) => {
   try {
     const { jornadaTrabajadorIds = [], metodoPago = 'Efectivo', comprobante } = req.body;
     if (jornadaTrabajadorIds.length === 0) {
@@ -1331,17 +1502,19 @@ app.post('/api/pagos/liquidar', async (req, res, next) => {
     const today = new Date().toISOString().split('T')[0];
     const comp = comprobante || `PAG-${Date.now().toString().slice(-6)}`;
 
-    for (const jtId of jornadaTrabajadorIds) {
-      await runQuery(
-        `UPDATE jornada_trabajadores
-         SET estadoPago = 'pagado',
-             fechaPago = ?,
-             metodoPago = ?,
-             comprobantePago = ?
-         WHERE id = ?`,
-        [today, metodoPago, comp, jtId]
-      );
-    }
+    await withTransaction(async () => {
+      for (const jtId of jornadaTrabajadorIds) {
+        await runQuery(
+          `UPDATE jornada_trabajadores
+           SET estadoPago = 'pagado',
+               fechaPago = ?,
+               metodoPago = ?,
+               comprobantePago = ?
+           WHERE id = ?`,
+          [today, metodoPago, comp, jtId]
+        );
+      }
+    });
 
     res.json({ ok: true, mensaje: `Se liquidaron ${jornadaTrabajadorIds.length} pagos correctamente.` });
   } catch (err) {
@@ -1349,7 +1522,7 @@ app.post('/api/pagos/liquidar', async (req, res, next) => {
   }
 });
 
-app.delete('/api/jornadas/:id', async (req, res, next) => {
+app.delete('/api/jornadas/:id', authMiddleware, requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
     await runQuery('DELETE FROM jornadas WHERE id = ?', [id]);
@@ -1370,8 +1543,8 @@ app.use(errorHandler);
 // Iniciar servidor tras verificar base de datos
 initDatabase()
   .then(() => {
-    app.listen(PORT, () => {
-      console.log(`🚀 Servidor Backend AgroCacao activo en http://localhost:${PORT}`);
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Servidor Backend AgroCacao activo en http://0.0.0.0:${PORT}`);
     });
   })
   .catch((err) => {

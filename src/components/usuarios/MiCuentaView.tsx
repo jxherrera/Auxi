@@ -1,7 +1,7 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
-import { User, Mail, Shield, KeyRound, CheckCircle2, AlertCircle, Loader2, Calendar, LogOut } from 'lucide-react';
+import { User, Mail, Shield, KeyRound, CheckCircle2, AlertCircle, Loader2, Calendar, LogOut, Type, Sparkles, SlidersHorizontal, RotateCcw } from 'lucide-react';
 
 export const MiCuentaView: React.FC = () => {
   const { user, updateCurrentUser, logout } = useAuth();
@@ -14,6 +14,35 @@ export const MiCuentaView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const [fontSizePx, setFontSizePx] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('agrocacao_font_size');
+      if (saved) {
+        const num = parseInt(saved, 10);
+        if (!isNaN(num) && num >= 13 && num <= 24) return num;
+        if (saved === 'grande') return 18;
+        if (saved === 'extra') return 20;
+        if (saved === 'compacto') return 14;
+      }
+      return 16;
+    } catch {
+      return 16;
+    }
+  });
+  const [fontSizeFeedback, setFontSizeFeedback] = useState<string | null>(null);
+
+  const applyFontSize = (newPx: number) => {
+    setFontSizePx(newPx);
+    try {
+      localStorage.setItem('agrocacao_font_size', newPx.toString());
+      document.documentElement.style.fontSize = `${newPx}px`;
+      setFontSizeFeedback(`Tamaño: ${newPx}px guardado`);
+      setTimeout(() => setFontSizeFeedback(null), 2500);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   if (!user) return null;
 
@@ -94,6 +123,161 @@ export const MiCuentaView: React.FC = () => {
           <LogOut className="w-4 h-4" />
           Cerrar Sesión
         </button>
+      </div>
+
+      {/* Ajustes de Visualización y Lectura con Deslizador */}
+      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-black">
+              <SlidersHorizontal className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">Ajuste de Tamaño de Texto (Deslizador)</h2>
+              <p className="text-xs text-slate-500">
+                Desliza la barra para agrandar o reducir el texto en toda la app de forma continua según tu preferencia.
+              </p>
+            </div>
+          </div>
+          {fontSizeFeedback && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-bold self-start sm:self-auto">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              {fontSizeFeedback}
+            </span>
+          )}
+        </div>
+
+        {/* Panel del deslizador */}
+        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 mb-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Type className="w-4 h-4 text-slate-500" />
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Tamaño Actual:
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-3.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-extrabold shadow-sm">
+                {fontSizePx}px · {Math.round((fontSizePx / 16) * 100)}%
+                {fontSizePx === 16 && ' (Estándar)'}
+                {fontSizePx === 18 && ' (Grande)'}
+                {fontSizePx >= 20 && ' (Extra Grande)'}
+                {fontSizePx <= 14 && ' (Compacto)'}
+              </span>
+              {fontSizePx !== 16 && (
+                <button
+                  type="button"
+                  onClick={() => applyFontSize(16)}
+                  title="Restablecer tamaño normal (16px)"
+                  className="p-1.5 rounded-xl hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Slider input */}
+          <div className="py-2 px-1">
+            <input
+              type="range"
+              min={14}
+              max={22}
+              step={1}
+              value={fontSizePx}
+              onChange={(e) => applyFontSize(Number(e.target.value))}
+              className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            />
+            {/* Etiquetas del deslizador */}
+            <div className="flex justify-between items-center text-[11px] font-semibold text-slate-400 mt-2">
+              <button
+                type="button"
+                onClick={() => applyFontSize(14)}
+                className={`hover:text-slate-700 cursor-pointer ${fontSizePx === 14 ? 'text-emerald-700 font-bold' : ''}`}
+              >
+                14px (Pequeño)
+              </button>
+              <button
+                type="button"
+                onClick={() => applyFontSize(16)}
+                className={`hover:text-slate-700 cursor-pointer ${fontSizePx === 16 ? 'text-emerald-700 font-bold' : ''}`}
+              >
+                16px (Normal)
+              </button>
+              <button
+                type="button"
+                onClick={() => applyFontSize(18)}
+                className={`hover:text-slate-700 cursor-pointer ${fontSizePx === 18 ? 'text-emerald-700 font-bold' : ''}`}
+              >
+                18px (Grande)
+              </button>
+              <button
+                type="button"
+                onClick={() => applyFontSize(20)}
+                className={`hover:text-slate-700 cursor-pointer ${fontSizePx === 20 ? 'text-emerald-700 font-bold' : ''}`}
+              >
+                20px (Extra)
+              </button>
+              <button
+                type="button"
+                onClick={() => applyFontSize(22)}
+                className={`hover:text-slate-700 cursor-pointer ${fontSizePx === 22 ? 'text-emerald-700 font-bold' : ''}`}
+              >
+                22px (Máximo)
+              </button>
+            </div>
+          </div>
+
+          {/* Botones de acceso rápido */}
+          <div className="grid grid-cols-3 gap-2 mt-5 pt-3 border-t border-slate-200/60">
+            <button
+              type="button"
+              onClick={() => applyFontSize(16)}
+              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                fontSizePx === 16
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-900/10'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              Normal (16px)
+            </button>
+            <button
+              type="button"
+              onClick={() => applyFontSize(18)}
+              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                fontSizePx === 18
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-900/10'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              Grande (18px)
+            </button>
+            <button
+              type="button"
+              onClick={() => applyFontSize(20)}
+              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                fontSizePx >= 20
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-900/10'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              Extra Grande (20px)
+            </button>
+          </div>
+        </div>
+
+        {/* Vista previa en tiempo real */}
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-start gap-3">
+          <Sparkles className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
+          <div className="w-full">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">
+              Vista previa en tiempo real:
+            </span>
+            <p className="text-slate-800 font-medium leading-relaxed">
+              «Jornada de Cosecha registrada en Lote Principal: 8 horas netas trabajadas, total a liquidar: $24.00»
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Main Info Card */}

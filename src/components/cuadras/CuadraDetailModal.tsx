@@ -34,8 +34,8 @@ export const CuadraDetailModal: React.FC<CuadraDetailModalProps> = ({
 
   const propietario = getPropietarioById(cuadra.propietarioId);
 
-  // Filtrar jornadas de esta cuadra
-  const vincsCuadra = jornadas.filter((j) => j.cuadraId === cuadra.id);
+  // Filtrar jornadas de esta cuadra (directa o compartida)
+  const vincsCuadra = jornadas.filter((j) => j.cuadraId === cuadra.id || j.propiedades?.some((p) => p.cuadraId === cuadra.id));
 
   // Estadísticas acumuladas
   const totalHoras = vincsCuadra.reduce((acc, v) => acc + (v.totalHoras || 0), 0);

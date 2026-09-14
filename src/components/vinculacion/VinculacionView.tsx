@@ -345,67 +345,72 @@ export const VinculacionView: React.FC = () => {
                     </div>
 
                     {/* Resumen numérico y Acciones */}
-                    <div className="flex flex-wrap items-center gap-3 lg:self-center border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-100">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between lg:justify-end gap-3 lg:self-center border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-100">
                       {/* Resumen Horas y Monto (Sin duplicación de trabajadores) */}
-                      <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 text-right">
+                      <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 flex sm:block items-center justify-between sm:text-right">
                         <span className="text-[10px] uppercase font-bold text-slate-400 block">
                           Mano de Obra Jornada
                         </span>
-                        <span className="text-base font-extrabold text-slate-900">
-                          {formatCurrency(jorn.totalPago)}
-                        </span>
-                        <span className="text-[10px] text-slate-500 block">
-                          {jorn.totalHoras}h ({jorn.trabajadores.length} pers. compartidos)
-                        </span>
+                        <div>
+                          <span className="text-base font-extrabold text-slate-900 block sm:inline">
+                            {formatCurrency(jorn.totalPago)}
+                          </span>
+                          <span className="text-[10px] text-slate-500 block">
+                            {jorn.totalHoras}h ({jorn.trabajadores.length} pers. compartidos)
+                          </span>
+                        </div>
                       </div>
 
-                      {/* Botón Registrar/Ver Resultados */}
-                      <button
-                        onClick={() => handleOpenResultados(jorn)}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs ${
-                          jorn.resultado
-                            ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
-                            : 'bg-harvest-500 hover:bg-harvest-600 text-cacao-950 shadow-xs'
-                        }`}
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>{jorn.resultado ? 'Ver Resultados' : 'Registrar Resultados'}</span>
-                      </button>
+                      {/* Botones de acción */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Botón Registrar/Ver Resultados */}
+                        <button
+                          onClick={() => handleOpenResultados(jorn)}
+                          className={`flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs ${
+                            jorn.resultado
+                              ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : 'bg-harvest-500 hover:bg-harvest-600 text-cacao-950 shadow-xs'
+                          }`}
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>{jorn.resultado ? 'Resultados' : 'Registrar'}</span>
+                        </button>
 
-                      {/* Botón Liquidar si hay pendientes */}
-                      {!isFullyPaid && (
-                        <button
-                          onClick={() => handleLiquidarJornada(jorn)}
-                          className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-2xs flex items-center gap-1"
-                        >
-                          <DollarSign className="w-3.5 h-3.5" />
-                          <span>Pagar Jornales</span>
-                        </button>
-                      )}
+                        {/* Botón Liquidar si hay pendientes */}
+                        {!isFullyPaid && (
+                          <button
+                            onClick={() => handleLiquidarJornada(jorn)}
+                            className="flex-1 sm:flex-none px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-2xs flex items-center justify-center gap-1"
+                          >
+                            <DollarSign className="w-3.5 h-3.5" />
+                            <span>Pagar</span>
+                          </button>
+                        )}
 
-                      {/* Acciones secundarias */}
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleOpenDetail(jorn)}
-                          className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-cacao-800 transition"
-                          title="Ver detalle en modo consulta"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleOpenEdit(jorn)}
-                          className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-cacao-800 transition"
-                          title="Editar jornada"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(jorn)}
-                          className="p-2 rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"
-                          title="Eliminar jornada"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {/* Acciones secundarias */}
+                        <div className="flex items-center gap-1 ml-auto sm:ml-0">
+                          <button
+                            onClick={() => handleOpenDetail(jorn)}
+                            className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-cacao-800 transition"
+                            title="Ver detalle en modo consulta"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenEdit(jorn)}
+                            className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-cacao-800 transition"
+                            title="Editar jornada"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(jorn)}
+                            className="p-2 rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"
+                            title="Eliminar jornada"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -490,94 +495,187 @@ export const VinculacionView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Vista Desplegable: Tabla de Trabajadores de la Jornada */}
+                {/* Vista Desplegable: Detalle de Trabajadores de la Jornada */}
                 {isExpanded && (
-                  <div className="bg-slate-50/90 border-t border-slate-200 p-4 sm:px-6">
+                  <div className="bg-slate-50/90 border-t border-slate-200 p-3 sm:p-5">
                     <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-2.5">
                       Personal, Horarios de Entrada/Salida, Almuerzos y Pagos:
                     </span>
 
-                    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-100 text-slate-700 font-bold text-[11px] border-b border-slate-200">
-                          <tr>
-                            <th className="py-2.5 px-3">Trabajador</th>
-                            <th className="py-2.5 px-3">Tipo</th>
-                            <th className="py-2.5 px-2 text-center">Horario</th>
-                            <th className="py-2.5 px-2 text-center">Almuerzo</th>
-                            <th className="py-2.5 px-2 text-center">Horas</th>
-                            <th className="py-2.5 px-2">Forma Pago</th>
-                            <th className="py-2.5 px-2 text-right">Tarifa</th>
-                            <th className="py-2.5 px-3 text-right">Total a Pagar</th>
-                            <th className="py-2.5 px-3 text-center">Estado</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {jorn.trabajadores.map((tj) => {
-                            const trab = getTrabajadorById(tj.trabajadorId);
-                            const isFamiliar = trab?.tipo === 'Familiar';
+                    <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
+                      {/* VISTA MÓVIL: Tarjetas individuales para cada trabajador (Evita scroll horizontal y cortes) */}
+                      <div className="md:hidden divide-y divide-slate-100 p-2 space-y-2.5">
+                        {jorn.trabajadores.map((tj) => {
+                          const trab = getTrabajadorById(tj.trabajadorId);
+                          const isFamiliar = trab?.tipo === 'Familiar';
 
-                            return (
-                              <tr key={tj.id} className="hover:bg-slate-50/70 transition">
-                                <td className="py-2.5 px-3 font-bold text-slate-900">
-                                  {trab?.nombreCompleto}
-                                  {tj.observaciones && (
-                                    <span className="block text-[10px] text-slate-400 font-normal">
-                                      {tj.observaciones}
+                          return (
+                            <div key={tj.id} className="bg-slate-50/70 p-3 rounded-2xl border border-slate-200/80 space-y-2.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center shrink-0">
+                                    {(trab?.nombreCompleto || 'T').charAt(0)}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <span className="font-bold text-slate-900 block text-xs truncate">
+                                      {trab?.nombreCompleto || 'Trabajador'}
                                     </span>
-                                  )}
-                                </td>
-                                <td className="py-2.5 px-3">
-                                  <span
-                                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                      isFamiliar
-                                        ? 'bg-amber-100 text-amber-900'
-                                        : 'bg-slate-100 text-slate-700'
-                                    }`}
-                                  >
-                                    {trab?.tipo || 'Contratado'}
+                                    <span
+                                      className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold ${
+                                        isFamiliar ? 'bg-amber-100 text-amber-900' : 'bg-slate-200/70 text-slate-700'
+                                      }`}
+                                    >
+                                      {trab?.tipo || 'Contratado'}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <span
+                                  className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                                    tj.estadoPago === 'pagado'
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : 'bg-amber-100 text-amber-800'
+                                  }`}
+                                >
+                                  {tj.estadoPago === 'pagado' ? 'Pagado' : 'Pendiente'}
+                                </span>
+                              </div>
+
+                              {tj.observaciones && (
+                                <p className="text-[11px] text-slate-500 italic bg-white/80 p-1.5 rounded-lg border border-slate-100">
+                                  {tj.observaciones}
+                                </p>
+                              )}
+
+                              {/* Grilla compacta de datos de jornada */}
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs bg-white p-2.5 rounded-xl border border-slate-200/60">
+                                <div>
+                                  <span className="text-[10px] text-slate-400 block font-semibold">Horario</span>
+                                  <span className="font-mono font-medium text-slate-700 text-[11px]">
+                                    {tj.horaEntrada} - {tj.horaSalida}
                                   </span>
-                                </td>
-                                <td className="py-2.5 px-2 text-center font-mono text-slate-600">
-                                  {tj.horaEntrada} - {tj.horaSalida}
-                                </td>
-                                <td className="py-2.5 px-2 text-center text-slate-500">
-                                  {tj.almuerzoHoras} h
-                                </td>
-                                <td className="py-2.5 px-2 text-center font-bold text-cacao-900">
-                                  {tj.horasTrabajadas} h
-                                </td>
-                                <td className="py-2.5 px-2 text-slate-600">
-                                  {tj.tipoPago === 'por_hora'
-                                    ? 'Por hora'
-                                    : tj.tipoPago === 'por_jornada'
-                                    ? 'Por jornada'
-                                    : tj.tipoPago === 'sin_pago'
-                                    ? 'Sin pago ($0)'
-                                    : 'Fijo'}
-                                </td>
-                                <td className="py-2.5 px-2 text-right text-slate-700">
-                                  {isFamiliar && tj.tarifa === 0 ? '$0.00' : formatCurrency(tj.tarifa)}
-                                </td>
-                                <td className="py-2.5 px-3 text-right font-extrabold text-emerald-700">
-                                  {isFamiliar && tj.pagoTotal === 0 ? '$0.00' : formatCurrency(tj.pagoTotal)}
-                                </td>
-                                <td className="py-2.5 px-3 text-center">
-                                  <span
-                                    className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                      tj.estadoPago === 'pagado'
-                                        ? 'bg-emerald-100 text-emerald-800'
-                                        : 'bg-amber-100 text-amber-800'
-                                    }`}
-                                  >
-                                    {tj.estadoPago === 'pagado' ? 'Pagado' : 'Pendiente'}
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-slate-400 block font-semibold">Almuerzo</span>
+                                  <span className="text-slate-700 font-medium text-[11px]">{tj.almuerzoHoras} h</span>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-slate-400 block font-semibold">Horas netas</span>
+                                  <span className="font-bold text-cacao-950 text-[11px]">{tj.horasTrabajadas} h</span>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-slate-400 block font-semibold">Forma pago</span>
+                                  <span className="text-slate-700 text-[11px]">
+                                    {tj.tipoPago === 'por_hora'
+                                      ? 'Por hora'
+                                      : tj.tipoPago === 'por_jornada'
+                                      ? 'Por jornada'
+                                      : tj.tipoPago === 'sin_pago'
+                                      ? 'Sin pago ($0)'
+                                      : 'Fijo'}
                                   </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-slate-400 block font-semibold">Tarifa</span>
+                                  <span className="text-slate-700 text-[11px]">
+                                    {isFamiliar && tj.tarifa === 0 ? '$0.00' : formatCurrency(tj.tarifa)}
+                                  </span>
+                                </div>
+                                <div className="border-t sm:border-t-0 pt-1 sm:pt-0 col-span-2 sm:col-span-1">
+                                  <span className="text-[10px] text-emerald-800 font-bold block">A Pagar</span>
+                                  <span className="font-black text-emerald-700 text-sm">
+                                    {isFamiliar && tj.pagoTotal === 0 ? '$0.00' : formatCurrency(tj.pagoTotal)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* VISTA ESCRITORIO: Tabla tradicional con overflow-x-auto */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-slate-100 text-slate-700 font-bold text-[11px] border-b border-slate-200">
+                            <tr>
+                              <th className="py-2.5 px-3">Trabajador</th>
+                              <th className="py-2.5 px-3">Tipo</th>
+                              <th className="py-2.5 px-2 text-center">Horario</th>
+                              <th className="py-2.5 px-2 text-center">Almuerzo</th>
+                              <th className="py-2.5 px-2 text-center">Horas</th>
+                              <th className="py-2.5 px-2">Forma Pago</th>
+                              <th className="py-2.5 px-2 text-right">Tarifa</th>
+                              <th className="py-2.5 px-3 text-right">Total a Pagar</th>
+                              <th className="py-2.5 px-3 text-center">Estado</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {jorn.trabajadores.map((tj) => {
+                              const trab = getTrabajadorById(tj.trabajadorId);
+                              const isFamiliar = trab?.tipo === 'Familiar';
+
+                              return (
+                                <tr key={tj.id} className="hover:bg-slate-50/70 transition">
+                                  <td className="py-2.5 px-3 font-bold text-slate-900">
+                                    {trab?.nombreCompleto}
+                                    {tj.observaciones && (
+                                      <span className="block text-[10px] text-slate-400 font-normal">
+                                        {tj.observaciones}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <span
+                                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                        isFamiliar
+                                          ? 'bg-amber-100 text-amber-900'
+                                          : 'bg-slate-100 text-slate-700'
+                                      }`}
+                                    >
+                                      {trab?.tipo || 'Contratado'}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-2 text-center font-mono text-slate-600">
+                                    {tj.horaEntrada} - {tj.horaSalida}
+                                  </td>
+                                  <td className="py-2.5 px-2 text-center text-slate-500">
+                                    {tj.almuerzoHoras} h
+                                  </td>
+                                  <td className="py-2.5 px-2 text-center font-bold text-cacao-900">
+                                    {tj.horasTrabajadas} h
+                                  </td>
+                                  <td className="py-2.5 px-2 text-slate-600">
+                                    {tj.tipoPago === 'por_hora'
+                                      ? 'Por hora'
+                                      : tj.tipoPago === 'por_jornada'
+                                      ? 'Por jornada'
+                                      : tj.tipoPago === 'sin_pago'
+                                      ? 'Sin pago ($0)'
+                                      : 'Fijo'}
+                                  </td>
+                                  <td className="py-2.5 px-2 text-right text-slate-700">
+                                    {isFamiliar && tj.tarifa === 0 ? '$0.00' : formatCurrency(tj.tarifa)}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right font-extrabold text-emerald-700">
+                                    {isFamiliar && tj.pagoTotal === 0 ? '$0.00' : formatCurrency(tj.pagoTotal)}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center">
+                                    <span
+                                      className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                        tj.estadoPago === 'pagado'
+                                          ? 'bg-emerald-100 text-emerald-800'
+                                          : 'bg-amber-100 text-amber-800'
+                                      }`}
+                                    >
+                                      {tj.estadoPago === 'pagado' ? 'Pagado' : 'Pendiente'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 )}

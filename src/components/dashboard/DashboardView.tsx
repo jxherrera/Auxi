@@ -113,13 +113,53 @@ export const DashboardView: React.FC = () => {
     color: COLORS[idx % COLORS.length],
   }));
 
-  // 3. Producción y Evolución Temporal (por mes/semana)
-  const dataEvolucion = [
-    { periodo: 'Junio', quintales: 18, ingresos: 630, jornales: 140 },
-    { periodo: 'Julio', quintales: 22, ingresos: 770, jornales: 180 },
-    { periodo: 'Agosto', quintales: 42, ingresos: 1596, jornales: 290 },
-    { periodo: 'Septiembre', quintales: 25, ingresos: 875, jornales: 212 },
-  ];
+  // 3. Producción y Evolución Temporal calculada dinámicamente de las jornadas reales
+  const dataEvolucion = useMemo(() => {
+    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const map = new Map<string, { periodo: string; timestamp: number; quintales: number; ingresos: number; jornales: number }>();
+
+    vinculaciones
+      .filter((v) => (v.cuadraId && cuadrasIdsVisibles.has(v.cuadraId)) || v.propiedades?.some((p) => cuadrasIdsVisibles.has(p.cuadraId)))
+      .forEach((v) => {
+        if (!v.fecha) return;
+        const d = new Date(v.fecha.includes('T') ? v.fecha : v.fecha + 'T00:00:00');
+        if (isNaN(d.getTime())) return;
+        const year = d.getFullYear();
+        const month = d.getMonth();
+        const key = `${year}-${String(month + 1).padStart(2, '0')}`;
+        const label = `${monthNames[month]} ${year}`;
+
+        if (!map.has(key)) {
+          map.set(key, { periodo: label, timestamp: d.getTime(), quintales: 0, ingresos: 0, jornales: 0 });
+        }
+        const item = map.get(key)!;
+        if (v.resultado?.esCosecha) {
+          item.quintales += Number(v.resultado.cantidadCosechada || 0);
+          item.ingresos += Number(v.resultado.ingresoGenerado || 0);
+        }
+        item.jornales += Number(v.totalPago || 0);
+      });
+
+    const sorted = Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([_, val]) => ({
+        periodo: val.periodo,
+        quintales: Math.round(val.quintales * 100) / 100,
+        ingresos: Math.round(val.ingresos * 100) / 100,
+        jornales: Math.round(val.jornales * 100) / 100,
+      }));
+
+    if (sorted.length === 0) {
+      const now = new Date();
+      return [{
+        periodo: `${monthNames[now.getMonth()]} ${now.getFullYear()}`,
+        quintales: 0,
+        ingresos: 0,
+        jornales: 0,
+      }];
+    }
+    return sorted;
+  }, [vinculaciones, cuadrasIdsVisibles]);
 
   const propietarioSeleccionado = propietarios.find(p => p.id === filtroPropietario);
   const ultimasVinculaciones = vinculaciones

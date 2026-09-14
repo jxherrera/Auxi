@@ -34,7 +34,7 @@ export const TrazabilidadView: React.FC = () => {
   const [selectedTrabajadorId, setSelectedTrabajadorId] = useState<string>(trabajadores[0]?.id || '');
 
   // Datos para perspectiva de Cuadra
-  const vincsDeCuadra = vinculaciones.filter((v) => v.cuadraId === selectedCuadraId);
+  const vincsDeCuadra = vinculaciones.filter((v) => v.cuadraId === selectedCuadraId || v.propiedades?.some((p) => p.cuadraId === selectedCuadraId));
   const selectedCuadra = getCuadraById(selectedCuadraId);
   const rentabilidadCuadra = rentabilidades.find((r) => r.cuadra.id === selectedCuadraId);
 

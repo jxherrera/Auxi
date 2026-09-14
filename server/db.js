@@ -7,14 +7,28 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Asegurar que exista la carpeta data
-const dataDir = process.env.DATA_DIR || path.join(__dirname, 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+// Resolución de ruta de base de datos SQLite con prioridad:
+// 1. DATABASE_PATH (ruta completa explícita, ej: /app/data/agrocacao.db)
+// 2. DATA_DIR (directorio, ej: /app/data -> /app/data/agrocacao.db)
+// 3. Ubicación por defecto local (__dirname/data/agrocacao.db)
+let dbPath;
+if (process.env.DATABASE_PATH && process.env.DATABASE_PATH.trim() !== '') {
+  dbPath = path.resolve(process.env.DATABASE_PATH.trim());
+} else if (process.env.DATA_DIR && process.env.DATA_DIR.trim() !== '') {
+  dbPath = path.join(path.resolve(process.env.DATA_DIR.trim()), 'agrocacao.db');
+} else {
+  dbPath = path.join(__dirname, 'data', 'agrocacao.db');
 }
 
-const dbPath = path.join(dataDir, 'agrocacao.db');
+// Asegurar que el directorio contenedor exista antes de conectar SQLite
+const targetDir = path.dirname(dbPath);
+if (!fs.existsSync(targetDir)) {
+  fs.mkdirSync(targetDir, { recursive: true });
+}
+
+console.log(`📦 Base de datos SQLite conectada en: ${dbPath}`);
 const db = new sqlite3.Database(dbPath);
+db.run('PRAGMA foreign_keys = ON;');
 
 // Helper para ejecutar consultas con Promises
 export const runQuery = (sql, params = []) => {
@@ -42,6 +56,23 @@ export const allQuery = (sql, params = []) => {
       resolve(rows);
     });
   });
+};
+
+// Helper para transacciones atómicas
+export const withTransaction = async (fn) => {
+  await runQuery('BEGIN TRANSACTION');
+  try {
+    const result = await fn();
+    await runQuery('COMMIT');
+    return result;
+  } catch (error) {
+    try {
+      await runQuery('ROLLBACK');
+    } catch (rollbackErr) {
+      console.error('Error durante rollback:', rollbackErr);
+    }
+    throw error;
+  }
 };
 
 // Helpers de Criptografía Segura para Contraseñas
@@ -300,6 +331,9 @@ export async function initDatabase() {
         ('tipo-mantenimiento', 'Mantenimiento General', 'mantenimiento', 'Cercas, caminos y marquesinas de secado', 0, 'Wrench');
     `);
   }
+
+  // Asegurar catálogos base y usuarios administradores si no existen (idempotente)
+  await ensureExtendedData();
 }
 
 // Semilla inicial completa conforme a los requerimientos del usuario
