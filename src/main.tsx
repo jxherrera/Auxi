@@ -12,7 +12,9 @@ createRoot(document.getElementById('root')!).render(
 // Registrar Service Worker para PWA
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
+    navigator.serviceWorker.register('/sw.js').then((registration) => {
+      registration.update();
+    }).catch((err) => {
       console.warn('SW registration failed:', err);
     });
   });
