@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Propietario, Cuadra, Trabajador, TipoTrabajo, FiltrosFinca } from '../../types';
-import { Filter, X, Search } from 'lucide-react';
+import { Filter, X, Search, ChevronDown, SlidersHorizontal } from 'lucide-react';
 
 interface FiltroBarProps {
   filtros: FiltrosFinca;
@@ -37,52 +37,89 @@ export const FiltroBar: React.FC<FiltroBarProps> = ({
   showEstadoPago = false,
   searchPlaceholder = 'Buscar...',
 }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
   // Cuadras filtradas contextualmente por el propietario seleccionado (si hay uno activo)
   const cuadrasDisponibles = filtros.propietarioId && filtros.propietarioId !== 'todos'
     ? cuadras.filter((c) => c.propietarioId === filtros.propietarioId)
     : cuadras;
 
+  const activeDropdownCount = [
+    filtros.propietarioId && filtros.propietarioId !== 'todos',
+    filtros.tipoPropiedad && filtros.tipoPropiedad !== 'todos',
+    filtros.cuadraId && filtros.cuadraId !== 'todos',
+    filtros.trabajadorId && filtros.trabajadorId !== 'todos',
+    filtros.tipoTrabajoId && filtros.tipoTrabajoId !== 'todos',
+    filtros.estadoPago && filtros.estadoPago !== 'todos',
+    Boolean(filtros.fechaDesde),
+    Boolean(filtros.fechaHasta),
+  ].filter(Boolean).length;
+
   const hasActiveFilters = Boolean(
-    (filtros.propietarioId && filtros.propietarioId !== 'todos') ||
-    (filtros.tipoPropiedad && filtros.tipoPropiedad !== 'todos') ||
-    (filtros.cuadraId && filtros.cuadraId !== 'todos') ||
-    (filtros.trabajadorId && filtros.trabajadorId !== 'todos') ||
-    (filtros.tipoTrabajoId && filtros.tipoTrabajoId !== 'todos') ||
-    (filtros.estadoPago && filtros.estadoPago !== 'todos') ||
-    filtros.fechaDesde ||
-    filtros.fechaHasta ||
-    filtros.searchTerm
+    activeDropdownCount > 0 || filtros.searchTerm
   );
 
   return (
-    <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-card space-y-3">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+    <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-card space-y-3">
+      <div className="flex items-center gap-2.5">
         {/* Search input */}
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder={searchPlaceholder}
             value={filtros.searchTerm || ''}
             onChange={(e) => onFilterChange('searchTerm', e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:border-cacao-700 transition"
+            className="w-full pl-10 pr-8 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-cacao-700 transition bg-slate-50/50 focus:bg-white"
           />
+          {filtros.searchTerm && (
+            <button
+              type="button"
+              onClick={() => onFilterChange('searchTerm', '')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
+
+        {/* Botón desplegable para Filtros */}
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer border shrink-0 ${
+            isOpen || activeDropdownCount > 0
+              ? 'bg-cacao-900 text-amber-300 border-cacao-950 shadow-xs'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+          }`}
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          <span className="hidden xs:inline">Filtros</span>
+          {activeDropdownCount > 0 && (
+            <span className="w-4 h-4 rounded-full bg-amber-400 text-cacao-950 font-black text-[10px] flex items-center justify-center">
+              {activeDropdownCount}
+            </span>
+          )}
+          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
 
         {/* Clear filters button */}
         {hasActiveFilters && (
           <button
+            type="button"
             onClick={onClear}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition self-start md:self-auto"
+            title="Limpiar filtros"
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 text-xs font-semibold transition shrink-0 cursor-pointer border border-slate-200 hover:border-rose-200"
           >
             <X className="w-3.5 h-3.5" />
-            <span>Limpiar Filtros</span>
+            <span className="hidden sm:inline">Limpiar</span>
           </button>
         )}
       </div>
 
-      {/* Selector Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-2.5 pt-2 border-t border-slate-100 text-xs">
+      {/* Selector Grid Desplegable */}
+      {isOpen && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-2.5 pt-3 border-t border-slate-100 text-xs animate-fadeIn">
         {/* Propietario */}
         {showPropietario && (
           <div>
@@ -231,6 +268,7 @@ export const FiltroBar: React.FC<FiltroBarProps> = ({
           </>
         )}
       </div>
+      )}
     </div>
   );
 };

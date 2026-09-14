@@ -198,18 +198,15 @@ export const VinculacionView: React.FC = () => {
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-900">Módulo de Vinculación de Trabajo y Jornadas</h2>
-            <p className="text-xs text-slate-500">
-              Jornadas compartidas multi-propietario, multi-cuadra y distribución exacta de cosechas
-            </p>
           </div>
         </div>
 
         <button
           onClick={handleOpenNew}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cacao-800 hover:bg-cacao-900 text-white text-xs font-bold shadow-xs hover:shadow transition self-start sm:self-auto"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cacao-800 hover:bg-cacao-900 text-white text-xs font-bold shadow-xs hover:shadow transition self-start sm:self-auto cursor-pointer"
         >
           <Plus className="w-4 h-4 text-harvest-400" />
-          <span>+ Registrar Nueva Jornada</span>
+          <span>Registrar Nueva Jornada</span>
         </button>
       </div>
 
