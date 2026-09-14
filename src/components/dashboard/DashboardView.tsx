@@ -193,7 +193,7 @@ export const DashboardView: React.FC = () => {
               onClick={() => setActiveView('resultados')}
               className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-amber-600 hover:bg-amber-500 active:scale-[0.98] text-white text-sm font-bold transition shadow-md shadow-amber-950/40 flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>+ Registrar Cosecha</span>
+              <span>Ver Cosechas & Resultados</span>
             </button>
           </div>
         </div>
