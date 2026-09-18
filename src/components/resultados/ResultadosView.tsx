@@ -81,7 +81,7 @@ export const ResultadosView: React.FC = () => {
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight leading-snug">
-              Resultados Agrícolas, Cosechas e Insumos
+              Resultados
             </h2>
           </div>
         </div>

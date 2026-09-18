@@ -862,7 +862,7 @@ export const ResultadoModal: React.FC<ResultadoModalProps> = ({
                       </label>
                       <input
                         type="number"
-                        step="0.5"
+                        step="any"
                         min="0"
                         required
                         value={gastosRelacionados}
@@ -1002,7 +1002,8 @@ export const ResultadoModal: React.FC<ResultadoModalProps> = ({
                               <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Gastos ($)</label>
                               <input
                                 type="number"
-                                step="0.5"
+                                step="any"
+                                min="0"
                                 value={cp.gastosRelacionados}
                                 onChange={(e) => handleCosechaPropietarioChange(cp.id, 'gastosRelacionados', Number(e.target.value))}
                                 className="w-full px-2.5 py-1.5 bg-rose-50/50 border border-rose-200 rounded-xl text-xs font-bold text-rose-800"
@@ -1089,7 +1090,7 @@ export const ResultadoModal: React.FC<ResultadoModalProps> = ({
                                 <td className="py-2.5 px-2 text-right">
                                   <input
                                     type="number"
-                                    step="0.5"
+                                    step="any"
                                     min="0"
                                     value={cp.gastosRelacionados}
                                     onChange={(e) => handleCosechaPropietarioChange(cp.id, 'gastosRelacionados', Number(e.target.value))}
@@ -1288,8 +1289,8 @@ export const ResultadoModal: React.FC<ResultadoModalProps> = ({
 
                     <input
                       type="number"
-                      step="0.5"
-                      min="0.1"
+                      step="any"
+                      min="0.01"
                       placeholder="Cant."
                       value={newInsumoCant}
                       onChange={(e) => setNewInsumoCant(Number(e.target.value))}
@@ -1372,8 +1373,8 @@ export const ResultadoModal: React.FC<ResultadoModalProps> = ({
 
                     <input
                       type="number"
-                      step="0.5"
-                      min="0.1"
+                      step="any"
+                      min="0.01"
                       placeholder="Cant."
                       value={reqInsumoCant}
                       onChange={(e) => setReqInsumoCant(Number(e.target.value))}

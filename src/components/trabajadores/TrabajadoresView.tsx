@@ -78,16 +78,16 @@ export const TrabajadoresView: React.FC = () => {
   const contratadosCount = trabajadores.filter((t) => t.tipo === 'Contratado').length;
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-4 sm:space-y-6 pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-card">
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-2xl bg-blue-100 text-blue-800">
-            <Users className="w-7 h-7" />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-xs sm:shadow-card">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-blue-100 text-blue-800 shrink-0">
+            <Users className="w-5 h-5 sm:w-7 sm:h-7" />
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">Directorio de Personal Agrícola</h2>
-            <p className="text-xs text-slate-500">
+          <div className="min-w-0">
+            <h2 className="text-sm sm:text-lg font-bold text-slate-900 leading-snug">Trabajadores</h2>
+            <p className="text-[11px] sm:text-xs text-slate-500 leading-tight">
               {trabajadores.length} trabajadores registrados ({familiaresCount} familiares • {contratadosCount} contratados)
             </p>
           </div>
@@ -95,9 +95,9 @@ export const TrabajadoresView: React.FC = () => {
 
         <button
           onClick={handleOpenNew}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cacao-800 hover:bg-cacao-900 text-white text-xs font-bold shadow-xs hover:shadow transition self-start sm:self-auto"
+          className="inline-flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-cacao-800 hover:bg-cacao-900 text-white text-xs font-bold shadow-xs hover:shadow transition w-full sm:w-auto"
         >
-          <Plus className="w-4 h-4 text-harvest-400" />
+          <Plus className="w-4 h-4 text-harvest-400 shrink-0" />
           <span>Registrar Trabajador</span>
         </button>
       </div>

@@ -124,16 +124,16 @@ export const UsuariosView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-xs sm:shadow-sm">
         <div>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-sm">
-              <Users className="w-6 h-6" />
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-xs shrink-0">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <h1 className="text-2xl font-black text-slate-800 tracking-tight">Gestión de Usuarios</h1>
-              <p className="text-sm font-medium text-slate-500">
-                Controla los accesos y roles del personal al sistema
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-xl font-black text-slate-800 tracking-tight leading-snug">Usuarios</h1>
+              <p className="text-[11px] sm:text-sm font-medium text-slate-500 leading-tight">
+                Controla los accesos y roles del personal
               </p>
             </div>
           </div>

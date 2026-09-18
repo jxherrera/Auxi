@@ -771,7 +771,8 @@ export const JornadaWizardModal: React.FC<JornadaWizardModalProps> = ({
                           {cfg.tipoPago === 'pago_fijo' ? (
                             <input
                               type="number"
-                              step="0.5"
+                              step="any"
+                              min="0"
                               value={cfg.manualPago ?? cfg.tarifa}
                               onChange={(e) => {
                                 const val = parseFloat(e.target.value) || 0;
@@ -786,7 +787,8 @@ export const JornadaWizardModal: React.FC<JornadaWizardModalProps> = ({
                           ) : (
                             <input
                               type="number"
-                              step="0.5"
+                              step="any"
+                              min="0"
                               value={cfg.tarifa}
                               onChange={(e) => {
                                 const val = parseFloat(e.target.value) || 0;
@@ -917,8 +919,8 @@ export const JornadaWizardModal: React.FC<JornadaWizardModalProps> = ({
                               <label className="text-[10px] font-bold text-slate-500 block">Cantidad</label>
                               <input
                                 type="number"
-                                min="0.1"
-                                step="0.5"
+                                min="0.01"
+                                step="any"
                                 value={item.cantidad}
                                 onChange={(e) => {
                                   const val = parseFloat(e.target.value) || 0;
@@ -1141,7 +1143,8 @@ export const JornadaWizardModal: React.FC<JornadaWizardModalProps> = ({
                         </label>
                         <input
                           type="number"
-                          step="0.5"
+                          step="any"
+                          min="0"
                           value={cantidadCosecha}
                           onChange={(e) => setCantidadCosecha(parseFloat(e.target.value) || 0)}
                           className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
@@ -1157,7 +1160,8 @@ export const JornadaWizardModal: React.FC<JornadaWizardModalProps> = ({
                         </label>
                         <input
                           type="number"
-                          step="0.5"
+                          step="any"
+                          min="0"
                           value={precioUnitarioCosecha}
                           onChange={(e) => setPrecioUnitarioCosecha(parseFloat(e.target.value) || 0)}
                           className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
@@ -1170,7 +1174,8 @@ export const JornadaWizardModal: React.FC<JornadaWizardModalProps> = ({
                         </label>
                         <input
                           type="number"
-                          step="1"
+                          step="any"
+                          min="0"
                           value={gastosCosecha}
                           onChange={(e) => setGastosCosecha(parseFloat(e.target.value) || 0)}
                           className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"

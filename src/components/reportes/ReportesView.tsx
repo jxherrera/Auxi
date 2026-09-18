@@ -189,24 +189,24 @@ export const ReportesView: React.FC = () => {
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-card">
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-2xl bg-emerald-100 text-emerald-800">
-            <BarChart3 className="w-7 h-7" />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-xs sm:shadow-card">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-emerald-100 text-emerald-800 shrink-0">
+            <BarChart3 className="w-5 h-5 sm:w-7 sm:h-7" />
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">Reportes Ejecutivos y Rentabilidad por Cuadra</h2>
-            <p className="text-xs text-slate-500">
-              Cálculo de margen neto, rendimiento agrícola por hectárea y auditoría financiera
+          <div className="min-w-0">
+            <h2 className="text-sm sm:text-lg font-bold text-slate-900 leading-snug">Reportes</h2>
+            <p className="text-[11px] sm:text-xs text-slate-500 leading-tight">
+              Cálculo de margen neto, rendimiento agrícola por hectárea y finanzas
             </p>
           </div>
         </div>
 
         <button
           onClick={handleExportCSV}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cacao-800 hover:bg-cacao-900 text-white text-xs font-bold shadow-xs hover:shadow transition self-start sm:self-auto"
+          className="inline-flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-cacao-800 hover:bg-cacao-900 text-white text-xs font-bold shadow-xs hover:shadow transition w-full sm:w-auto"
         >
-          <Download className="w-4 h-4 text-harvest-400" />
+          <Download className="w-4 h-4 text-harvest-400 shrink-0" />
           <span>Exportar Informe CSV</span>
         </button>
       </div>

@@ -207,16 +207,18 @@ export const PagosView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-4 sm:space-y-6 pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-card">
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-2xl bg-cacao-900 text-amber-300">
-            <CreditCard className="w-7 h-7" />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-xs sm:shadow-card">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-cacao-900 text-amber-300 shrink-0">
+            <CreditCard className="w-5 h-5 sm:w-7 sm:h-7" />
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">Control de Pagos y Nómina de Jornaleros</h2>
-            <p className="text-xs text-slate-500">
+          <div className="min-w-0">
+            <h2 className="text-sm sm:text-lg font-bold text-slate-900 leading-snug">
+              Pagos
+            </h2>
+            <p className="text-[11px] sm:text-xs text-slate-500 leading-tight">
               Liquidación por horas, jornales familiares en $0 y emisión de comprobantes
             </p>
           </div>
@@ -225,40 +227,40 @@ export const PagosView: React.FC = () => {
         {selectedJtIds.length > 0 && (
           <button
             onClick={handlePagarEnLote}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs hover:shadow transition"
+            className="inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs hover:shadow transition w-full sm:w-auto"
           >
-            <CheckCircle2 className="w-4 h-4" />
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>Liquidar Selección ({selectedJtIds.length} jornales)</span>
           </button>
         )}
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-card">
-          <span className="text-xs font-semibold uppercase text-slate-400 block">Total Pagado a Trabajadores</span>
-          <div className="flex items-center gap-2 mt-2">
-            <DollarSign className="w-6 h-6 text-emerald-600" />
-            <span className="text-2xl font-extrabold text-slate-900">{formatCurrency(totalPagado)}</span>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4">
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 shadow-xs sm:shadow-card">
+          <span className="text-[10px] sm:text-xs font-semibold uppercase text-slate-400 block tracking-wider">Total Pagado a Trabajadores</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 mt-1 sm:mt-2">
+            <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 shrink-0" />
+            <span className="text-xl sm:text-2xl font-extrabold text-slate-900">{formatCurrency(totalPagado)}</span>
           </div>
-          <span className="text-xs text-emerald-700 mt-1 block">Jornales liquidados</span>
+          <span className="text-[11px] sm:text-xs text-emerald-700 mt-0.5 sm:mt-1 block">Jornales liquidados</span>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-amber-300 shadow-card">
-          <span className="text-xs font-semibold uppercase text-amber-800 block">Total Pendiente de Pago</span>
-          <div className="flex items-center gap-2 mt-2">
-            <Clock className="w-6 h-6 text-amber-600" />
-            <span className="text-2xl font-extrabold text-amber-900">{formatCurrency(totalPendiente)}</span>
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-amber-300 shadow-xs sm:shadow-card">
+          <span className="text-[10px] sm:text-xs font-semibold uppercase text-amber-800 block tracking-wider">Total Pendiente de Pago</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 mt-1 sm:mt-2">
+            <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 shrink-0" />
+            <span className="text-xl sm:text-2xl font-extrabold text-amber-900">{formatCurrency(totalPendiente)}</span>
           </div>
-          <span className="text-xs text-amber-700 mt-1 block">Monto por transferir a personal</span>
+          <span className="text-[11px] sm:text-xs text-amber-700 mt-0.5 sm:mt-1 block">Monto por transferir a personal</span>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-card">
-          <span className="text-xs font-semibold uppercase text-slate-400 block">Horas Laboradas Totales</span>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-2xl font-extrabold text-cacao-900">{totalHoras} hrs</span>
+        <div className="bg-white p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 shadow-xs sm:shadow-card">
+          <span className="text-[10px] sm:text-xs font-semibold uppercase text-slate-400 block tracking-wider">Horas Laboradas Totales</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 mt-1 sm:mt-2">
+            <span className="text-xl sm:text-2xl font-extrabold text-cacao-900">{totalHoras} hrs</span>
           </div>
-          <span className="text-xs text-slate-500 mt-1 block">Incluye aportes familiares ($0)</span>
+          <span className="text-[11px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1 block">Incluye aportes familiares ($0)</span>
         </div>
       </div>
 

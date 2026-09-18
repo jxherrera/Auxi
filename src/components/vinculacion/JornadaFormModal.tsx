@@ -822,7 +822,7 @@ export const JornadaFormModal: React.FC<JornadaFormModalProps> = ({
                           <span className="absolute left-3 top-2 text-slate-400 font-bold">$</span>
                           <input
                             type="number"
-                            step="0.5"
+                            step="any"
                             min="0"
                             value={row.pagoTotal}
                             onChange={(e) => handleRowChange(row.id, 'pagoTotal', e.target.value)}
@@ -839,7 +839,7 @@ export const JornadaFormModal: React.FC<JornadaFormModalProps> = ({
                           <span className="absolute left-3 top-2 text-slate-400 font-bold">$</span>
                           <input
                             type="number"
-                            step="0.5"
+                            step="any"
                             min="0"
                             value={row.tarifa}
                             onChange={(e) => handleRowChange(row.id, 'tarifa', e.target.value)}
